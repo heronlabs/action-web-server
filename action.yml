@@ -1,0 +1,99 @@
+name: Web Server
+
+author: Heron Labs
+
+description: Build a web app, publish it to S3 with cache-aware grace pruning, and invalidate CloudFront.
+
+branding:
+  icon: globe
+  color: green
+
+inputs:
+  AWS_ROLE_TO_ASSUME:
+    description: ARN of the IAM role to assume via OIDC.
+    required: true
+  AWS_REGION:
+    description: AWS region where the S3 bucket and SSM parameters live.
+    required: true
+  AWS_ROLE_DURATION_SECONDS:
+    description: Duration in seconds for each assumed role session.
+    required: true
+  AWS_ENV_PATH:
+    description: SSM parameter path prefix holding the build environment (e.g. /my-app/prod/).
+    required: true
+  BUCKET_NAME:
+    description: Destination S3 bucket name.
+    required: true
+  DISTRIBUTION_ID:
+    description: CloudFront distribution ID to invalidate after publishing.
+    required: true
+  APP_DIR:
+    description: Directory (relative to the repo root) that receives `.env` and where `BUILD_COMMAND` runs.
+    required: false
+    default: '.'
+  BUILD_COMMAND:
+    description: Shell command that builds the app, run inside `APP_DIR`.
+    required: false
+    default: pnpm build
+  BUILD_FOLDER:
+    description: Build output folder (relative to `APP_DIR`) whose contents are published.
+    required: false
+    default: dist
+  PRUNE_GRACE_DAYS:
+    description: Positive integer. Objects absent from the build are recorded in a ledger (`.s3-publish/stale.tsv`) and deleted once absent for at least this many days.
+    required: false
+    default: '7'
+  NO_CACHE_PATTERNS:
+    description: Comma-separated `aws s3 sync` patterns, matched against paths relative to `BUILD_FOLDER`, published with `cache-control no-cache`. Adds to the built-in `*.html`, `sw.js`, `manifest.webmanifest`. Example `robots.txt,version.json`.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: 'Configure AWS Credentials'
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        aws-region: ${{ inputs.AWS_REGION }}
+        role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
+        role-duration-seconds: ${{ inputs.AWS_ROLE_DURATION_SECONDS }}
+        role-session-name: action-web-server-session
+
+    - name: 'Create .env from SSM'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/ssm/env.sh
+      env:
+        AWS_ENV_PATH: ${{ inputs.AWS_ENV_PATH }}
+        APP_DIR: ${{ inputs.APP_DIR }}
+
+    - name: 'Build'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/build/run.sh
+      env:
+        APP_DIR: ${{ inputs.APP_DIR }}
+        BUILD_COMMAND: ${{ inputs.BUILD_COMMAND }}
+
+    # Second session: a long build could outlive the first role session, so the
+    # credentials used for publishing and invalidation are refreshed here.
+    - name: 'Configure AWS Credentials'
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        aws-region: ${{ inputs.AWS_REGION }}
+        role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
+        role-duration-seconds: ${{ inputs.AWS_ROLE_DURATION_SECONDS }}
+        role-session-name: action-web-server-session
+
+    - name: 'Publish to S3'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/s3/publish.sh
+      env:
+        APP_DIR: ${{ inputs.APP_DIR }}
+        BUILD_FOLDER: ${{ inputs.BUILD_FOLDER }}
+        BUCKET_NAME: ${{ inputs.BUCKET_NAME }}
+        NO_CACHE_PATTERNS: ${{ inputs.NO_CACHE_PATTERNS }}
+        PRUNE_GRACE_DAYS: ${{ inputs.PRUNE_GRACE_DAYS }}
+
+    - name: 'Invalidate CloudFront'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/cloudfront/invalidate.sh
+      env:
+        DISTRIBUTION_ID: ${{ inputs.DISTRIBUTION_ID }}

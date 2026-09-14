@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Minimal `aws` stub for action-web-server offline tests.
+#
+# Emulates only the aws surface the action uses:
+#   aws s3 sync DIR s3://BUCKET --cache-control ...       -> no-op (exit 0)
+#   aws s3 ls   s3://BUCKET/KEY                           -> exit 0 only when $AWS_LEDGER_FILE is set
+#                                                            and exists, else exit 1 (ledger absent)
+#   aws s3 cp   s3://BUCKET/KEY -                         -> prints $AWS_LEDGER_FILE (ledger download);
+#                                                            exit 1 when $AWS_LEDGER_DOWNLOAD_FAIL=1
+#   aws s3 cp   - s3://BUCKET/KEY ...                     -> writes stdin to $AWS_LEDGER_OUT (ledger upload)
+#   aws s3api list-objects-v2 --bucket B --query ... --output text
+#                                                         -> keys from $AWS_BUCKET_KEYS_FILE (one per line)
+#                                                            tab-joined on one line like the real CLI;
+#                                                            empty/missing file -> `None`
+#   aws s3api delete-objects --bucket B --delete file://F -> no-op (exit 0), F's JSON lands in the log
+#   aws cloudfront create-invalidation --distribution-id ID --paths /* --query ... --output text
+#                                                         -> prints invalidation id, exit 0
+#   aws cloudfront wait invalidation-completed --distribution-id ID --id IID
+#                                                         -> exit 0
+#
+# `aws s3 rm` is deliberately unhandled (exit 1): the action must never wipe
+# the bucket, so a regression that reintroduces it fails loudly.
+#
+# Every invocation is appended (one line, full argv) to $AWS_LOG so tests can assert
+# which subcommands ran, in which order, and with which flags. No network, no real AWS.
+set -euo pipefail
+
+: "${AWS_LOG:?AWS_LOG must point at a log file}"
+
+# Log the full argv. A `--delete file://PATH` payload is expanded to the file's
+# contents so tests can assert on the JSON the real CLI would send.
+# Built by concatenation, not ${var//pat/repl}: bash >= 5.2 rewrites backslashes
+# in the replacement string, which would corrupt escaped JSON keys in the log.
+log_args=""
+prev=""
+for arg in "$@"; do
+  if [ "$prev" = "--delete" ]; then
+    case "$arg" in file://*) arg="$(cat "${arg#file://}")" ;; esac
+  fi
+  log_args="${log_args:+$log_args }$arg"
+  prev="$arg"
+done
+printf 'aws %s\n' "$log_args" >>"$AWS_LOG"
+
+case "${1:-} ${2:-}" in
+  "s3 sync") : ;;
+  "s3 ls")
+    if [ -z "${AWS_LEDGER_FILE:-}" ] || [ ! -f "$AWS_LEDGER_FILE" ]; then
+      exit 1
+    fi
+    ;;
+  "s3 cp")
+    if [ "${3:-}" = "-" ]; then
+      : "${AWS_LEDGER_OUT:?AWS_LEDGER_OUT must point at the ledger upload target}"
+      cat >"$AWS_LEDGER_OUT"
+    else
+      if [ "${AWS_LEDGER_DOWNLOAD_FAIL:-}" = "1" ]; then
+        printf 'aws stub: simulated download failure\n' >&2
+        exit 1
+      fi
+      cat "${AWS_LEDGER_FILE:?AWS_LEDGER_FILE must point at the ledger fixture}"
+    fi
+    ;;
+  "s3api list-objects-v2")
+    if [ -n "${AWS_BUCKET_KEYS_FILE:-}" ] && [ -s "$AWS_BUCKET_KEYS_FILE" ]; then
+      paste -s -d '\t' "$AWS_BUCKET_KEYS_FILE"
+    else
+      printf 'None\n'
+    fi
+    ;;
+  "s3api delete-objects") : ;;
+  "cloudfront create-invalidation") printf 'I2EXAMPLE\n' ;;
+  "cloudfront wait") : ;;
+  *) printf 'aws stub: unhandled argv: %s\n' "$*" >&2; exit 1 ;;
+esac
