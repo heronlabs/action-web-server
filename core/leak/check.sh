@@ -75,7 +75,13 @@ readonly PATH BUILD_DIR WORK MIN_SECRET_LENGTH
             continue
         fi
 
-        if hits="$(grep -rlF -- "${value}" "${BUILD_DIR}")"; then
+        # The needle reaches grep through a file, never argv: on a self-hosted
+        # runner argv is readable from /proc by co-tenant processes. `printf
+        # '%s'` writes no trailing newline — an empty trailing pattern would
+        # match every file and turn every build into a false positive.
+        printf '%s' "${value}" >"${WORK}/needle"
+
+        if hits="$(grep -rlF -f "${WORK}/needle" -- "${BUILD_DIR}")"; then
             printf '%s\n' "${name}" >>"${WORK}/report.txt"
             printf '%s\n' "${hits}" | sed 's|^|    |' >>"${WORK}/report.txt"
         fi

@@ -236,3 +236,14 @@ run_check() {
 
   rm -f "$RUN_AWSLOG"
 }
+
+# Source-level assertion: argv is not observable from outside the process, so no
+# behavioural test can catch a regression back to `grep -- "${value}"`. On a
+# self-hosted runner argv is readable from /proc by co-tenant processes, so the
+# needle must go through a file.
+@test "secret values reach grep through a file, never argv" {
+  # shellcheck disable=SC2016  # the patterns are source text to find, not expansions
+  grep -q -- 'grep -rlF -f "${WORK}/needle"' "$SCRIPT"
+  # shellcheck disable=SC2016  # same: matching the literal form that must not return
+  [ "$(grep -c -- 'grep -rlF -- "\${value}"' "$SCRIPT")" -eq 0 ]
+}
