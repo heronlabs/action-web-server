@@ -32,5 +32,5 @@ jobs:
 
       - uses: heronlabs/action-tag-release-build@v7
         with:
-          gh_token: ${{ github.token }}
+          ghToken: ${{ github.token }}
           semantic: ${{ inputs.semantic }}
