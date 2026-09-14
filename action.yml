@@ -2,7 +2,7 @@ name: Web Server
 
 author: Heron Labs
 
-description: Build a web app and publish it to S3 with cache-aware grace pruning.
+description: Build a web app, publish it to S3 with cache-aware grace pruning, and invalidate CloudFront.
 
 branding:
   icon: globe
@@ -23,6 +23,9 @@ inputs:
     required: true
   BUCKET_NAME:
     description: Destination S3 bucket name.
+    required: true
+  DISTRIBUTION_ID:
+    description: CloudFront distribution ID to invalidate after publishing.
     required: true
   APP_DIR:
     description: Directory (relative to the repo root) that receives `.env` and where `BUILD_COMMAND` runs.
@@ -70,7 +73,7 @@ runs:
         BUILD_COMMAND: ${{ inputs.BUILD_COMMAND }}
 
     # Second session: a long build could outlive the first role session, so the
-    # credentials used for publishing are refreshed here.
+    # credentials used for publishing and invalidation are refreshed here.
     - name: 'Configure AWS Credentials'
       uses: aws-actions/configure-aws-credentials@v6
       with:
@@ -88,3 +91,9 @@ runs:
         BUCKET_NAME: ${{ inputs.BUCKET_NAME }}
         NO_CACHE_PATTERNS: ${{ inputs.NO_CACHE_PATTERNS }}
         PRUNE_GRACE_DAYS: ${{ inputs.PRUNE_GRACE_DAYS }}
+
+    - name: 'Invalidate CloudFront'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/cloudfront/invalidate.sh
+      env:
+        DISTRIBUTION_ID: ${{ inputs.DISTRIBUTION_ID }}

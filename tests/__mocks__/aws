@@ -13,6 +13,10 @@
 #                                                            tab-joined on one line like the real CLI;
 #                                                            empty/missing file -> `None`
 #   aws s3api delete-objects --bucket B --delete file://F -> no-op (exit 0), F's JSON lands in the log
+#   aws cloudfront create-invalidation --distribution-id ID --paths /* --query ... --output text
+#                                                         -> prints invalidation id, exit 0
+#   aws cloudfront wait invalidation-completed --distribution-id ID --id IID
+#                                                         -> exit 0
 #
 # `aws s3 rm` is deliberately unhandled (exit 1): the action must never wipe
 # the bucket, so a regression that reintroduces it fails loudly.
@@ -65,5 +69,7 @@ case "${1:-} ${2:-}" in
     fi
     ;;
   "s3api delete-objects") : ;;
+  "cloudfront create-invalidation") printf 'I2EXAMPLE\n' ;;
+  "cloudfront wait") : ;;
   *) printf 'aws stub: unhandled argv: %s\n' "$*" >&2; exit 1 ;;
 esac
