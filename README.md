@@ -228,10 +228,10 @@ Bash shell scripts wrapped by a composite GitHub Action.
 │   │   └── env.sh                # SSM parameters -> APP_DIR/.env (from action-ssm-env-build)
 │   ├── build/
 │   │   └── run.sh                # Runs BUILD_COMMAND inside APP_DIR
-│   ├── s3/
-│   │   └── publish.sh            # Two-pass S3 sync + grace-period prune (from action-s3-publish)
 │   ├── leak/
 │   │   └── check.sh              # SecureString values must not reach the build output
+│   ├── s3/
+│   │   └── publish.sh            # Two-pass S3 sync + grace-period prune (from action-s3-publish)
 │   └── cloudfront/
 │       └── invalidate.sh         # CloudFront invalidation (from action-cloudfront-publish)
 ├── tests/
@@ -241,8 +241,8 @@ Bash shell scripts wrapped by a composite GitHub Action.
 │   │   └── npx                   # npx stub (records argv, prints dotenv)
 │   ├── ssm.bats                  # BATS tests — core/ssm/env.sh
 │   ├── build.bats                # BATS tests — core/build/run.sh
-│   ├── s3.bats                   # BATS tests — core/s3/publish.sh
 │   ├── leak.bats                 # BATS tests — core/leak/check.sh
+│   ├── s3.bats                   # BATS tests — core/s3/publish.sh
 │   └── cloudfront.bats           # BATS tests — core/cloudfront/invalidate.sh
 ├── Makefile                      # test (bats) + lint (shellcheck)
 └── version.txt                   # Current version
