@@ -1,9 +1,0 @@
-{
-  "baseBranch": "main",
-  "remote": "origin",
-  "lintCommand": "make lint",
-  "testCommands": {
-    "unit": "make test"
-  },
-  "mergeMethod": "squash"
-}
