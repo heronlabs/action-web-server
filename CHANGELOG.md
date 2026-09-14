@@ -1,3 +1,17 @@
+## v1.0.1 (2026-09-14)
+
+### Features
+
+* feat: harden web server template for v1.1.0 (#3) (768d2d6f9cb70409229e0644dc34ac909e57a1ef)
+
+### Bug Fixes
+
+* fix: correct casing of ghToken in continuous deployment workflow (5a27ab94ee4f16159608f56aa0b2313d2d747d2a)
+
+### Miscellaneous Chores
+
+* other(deps): bump heronlabs/action-tag-release-build from 6 to 7 in the actions group (#2) (056239289bb5be12c9255a8bcfa10335644bd15f)
+
 ## v1.0.0 (2026-09-14)
 
 ### ⚠ BREAKING CHANGES
