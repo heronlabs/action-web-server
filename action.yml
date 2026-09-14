@@ -46,6 +46,10 @@ inputs:
   NO_CACHE_PATTERNS:
     description: Comma-separated `aws s3 sync` patterns, matched against paths relative to `BUILD_FOLDER`, published with `cache-control no-cache`. Adds to the built-in `*.html`, `sw.js`, `manifest.webmanifest`. Example `robots.txt,version.json`.
     required: false
+  LEAK_CHECK:
+    description: '`true` to scan the build output for the values of the `SecureString` parameters under `AWS_ENV_PATH` that are 16 characters or longer, failing the build on a match. Any other value skips the scan.'
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -81,6 +85,15 @@ runs:
         role-to-assume: ${{ inputs.AWS_ROLE_TO_ASSUME }}
         role-duration-seconds: ${{ inputs.AWS_ROLE_DURATION_SECONDS }}
         role-session-name: action-web-server-session
+
+    - name: 'Check for leaked secrets'
+      shell: bash
+      run: bash ${{ github.action_path }}/core/leak/check.sh
+      env:
+        LEAK_CHECK: ${{ inputs.LEAK_CHECK }}
+        AWS_ENV_PATH: ${{ inputs.AWS_ENV_PATH }}
+        APP_DIR: ${{ inputs.APP_DIR }}
+        BUILD_FOLDER: ${{ inputs.BUILD_FOLDER }}
 
     - name: 'Publish to S3'
       shell: bash

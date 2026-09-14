@@ -50,7 +50,7 @@ done
 
 aws s3 sync "${BUILD_DIR}" "s3://${BUCKET_NAME}" \
   "${NO_CACHE_EXCLUDES[@]}" \
-  --cache-control max-age=31536000,public \
+  --cache-control max-age=31536000,public,immutable \
   --storage-class=INTELLIGENT_TIERING
 
 aws s3 sync "${BUILD_DIR}" "s3://${BUCKET_NAME}" \
