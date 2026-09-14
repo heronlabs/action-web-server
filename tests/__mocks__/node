@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# No-op `node` stub so the `command -v node` check in core/env.sh passes.
+set -euo pipefail

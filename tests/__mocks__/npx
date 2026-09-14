@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Minimal `npx` stub for action-web-server offline tests.
+# Logs argv to $NPX_LOG and prints a dotenv line so tests can assert on the
+# generated .env. No network, no npm.
+set -euo pipefail
+
+printf '%s\n' "$*" >> "${NPX_LOG}"
+printf "%s\n" "FOO='bar'"
