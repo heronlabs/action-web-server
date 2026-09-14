@@ -83,6 +83,8 @@ days_ago() { echo $(( $(date -u +%s) - $1 * 86400 )); }
   grep 's3 sync ./dist s3://my-bucket' "$RUN_AWSLOG" | grep -- '--cache-control max-age=31536000,public' \
     | grep -- '--exclude \*.html' | grep -- '--exclude sw.js' | grep -- '--exclude manifest.webmanifest' \
     | grep -q -- '--storage-class=INTELLIGENT_TIERING'
+  grep 's3 sync ./dist s3://my-bucket' "$RUN_AWSLOG" \
+    | grep -q -- '--cache-control max-age=31536000,public,immutable'
   grep 's3 sync ./dist s3://my-bucket' "$RUN_AWSLOG" | grep -- '--cache-control no-cache' | grep -- '--exclude \* ' \
     | grep -- '--include \*.html' | grep -- '--include sw.js' | grep -- '--include manifest.webmanifest' \
     | grep -q -- '--storage-class=INTELLIGENT_TIERING'
