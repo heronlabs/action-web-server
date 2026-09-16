@@ -6,7 +6,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-.}"
 
 # Pinned version of @heronlabs/env-ssm, fetched at runtime via npx (npm provenance).
-ENV_SSM_VERSION="4.0.11"
+ENV_SSM_VERSION="4.1.0"
 
 if [ ! -d "${APP_DIR}" ]; then
     echo "APP_DIR '${APP_DIR}' is not a directory" >&2
