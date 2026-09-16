@@ -1,3 +1,9 @@
+## v1.0.2 (2026-09-16)
+
+### Miscellaneous Chores
+
+* other: bump @heronlabs/env-ssm pin to 4.1.0 (#4) (ec62fc227423d7ae2d7e6184f62048591b2aa3e3)
+
 ## v1.0.1 (2026-09-14)
 
 ### Features
