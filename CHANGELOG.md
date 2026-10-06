@@ -1,3 +1,9 @@
+## v1.0.3 (2026-10-06)
+
+### Bug Fixes
+
+* fix: handle multi-line secrets in leak check (#5) (d8647374189d4ba5ccb18188434a12f3f8ff155e)
+
 ## v1.0.2 (2026-09-16)
 
 ### Miscellaneous Chores
