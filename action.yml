@@ -47,7 +47,7 @@ inputs:
     description: Comma-separated `aws s3 sync` patterns, matched against paths relative to `BUILD_FOLDER`, published with `cache-control no-cache`. Adds to the built-in `*.html`, `sw.js`, `manifest.webmanifest`. Example `robots.txt,version.json`.
     required: false
   LEAK_CHECK:
-    description: '`true` to scan the build output for the values of the `SecureString` parameters under `AWS_ENV_PATH` that are 16 characters or longer, failing the build on a match. Any other value skips the scan.'
+    description: '`true` to scan the build output for the values of the `SecureString` parameters under `AWS_ENV_PATH` that are 16 characters or longer (multi-line values are matched line by line, ignoring lines shorter than 16 characters), failing the build on a match. Any other value skips the scan.'
     required: false
     default: 'true'
 

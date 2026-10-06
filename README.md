@@ -80,7 +80,7 @@ jobs:
 | `BUILD_FOLDER` | Build output folder (relative to `APP_DIR`) whose contents are published | No | `dist` |
 | `PRUNE_GRACE_DAYS` | Positive integer; objects absent from the build are deleted once absent for at least this many days | No | `7` |
 | `NO_CACHE_PATTERNS` | Comma-separated `aws s3 sync` patterns (relative to `BUILD_FOLDER`) published with `cache-control no-cache`, added to the built-in `*.html`, `sw.js`, `manifest.webmanifest` | No | — |
-| `LEAK_CHECK` | `true` scans the build output for the values of the `SecureString` parameters under `AWS_ENV_PATH` that are 16 characters or longer, and fails the build on a match; any other value skips the scan | No | `true` |
+| `LEAK_CHECK` | `true` scans the build output for the values of the `SecureString` parameters under `AWS_ENV_PATH` that are 16 characters or longer (multi-line values are matched line by line, ignoring lines shorter than 16 characters), and fails the build on a match; any other value skips the scan | No | `true` |
 
 ## Outputs
 
@@ -256,7 +256,7 @@ Bash shell scripts wrapped by a composite GitHub Action.
 2. **Create .env from SSM** — `core/ssm/env.sh` runs `@heronlabs/env-ssm` (pinned, via `npx`) and writes every parameter under `AWS_ENV_PATH` to `APP_DIR/.env` in dotenv format.
 3. **Build** — `core/build/run.sh` runs `BUILD_COMMAND` inside `APP_DIR`.
 4. **Configure AWS credentials (again)** — a second `aws-actions/configure-aws-credentials@v6` call refreshes the session so a long build cannot expire the credentials used for publishing and invalidation.
-5. **Check for leaked secrets** — `core/leak/check.sh` reads the names of the `SecureString` parameters under `AWS_ENV_PATH` and greps `APP_DIR/BUILD_FOLDER` for each value of 16 characters or more. A match fails the build before anything is published. Set `LEAK_CHECK: 'false'` to skip it.
+5. **Check for leaked secrets** — `core/leak/check.sh` reads the names of the `SecureString` parameters under `AWS_ENV_PATH` and greps `APP_DIR/BUILD_FOLDER` for each value of 16 characters or more; a multi-line value is matched line by line, and its lines shorter than 16 characters are ignored. A match fails the build before anything is published. Set `LEAK_CHECK: 'false'` to skip it.
 6. **Publish to S3** — `core/s3/publish.sh` syncs `APP_DIR/BUILD_FOLDER` to the bucket in two passes (long-lived cache for hashed assets, `no-cache` for entry points), then runs the grace-period prune.
 7. **Invalidate CloudFront** — `core/cloudfront/invalidate.sh` calls `aws cloudfront create-invalidation --paths "/*"` and waits for it to complete.
 
