@@ -16,7 +16,9 @@ BUILD_DIR="${APP_DIR}/${BUILD_FOLDER}"
 ENV_FILE="${APP_DIR}/.env"
 
 # Values shorter than this are structurally public (GTM container ids, Clarity
-# project ids, short flags) and would only produce false positives.
+# project ids, short flags) and would only produce false positives. The minimum
+# applies per line: a multi-line value (armored PGP key, PEM key, certificate) is
+# matched line by line, and its blank and short lines (the armor CRC) are ignored.
 MIN_SECRET_LENGTH=16
 
 if [ ! -d "${BUILD_DIR}" ]; then
@@ -71,15 +73,22 @@ readonly PATH BUILD_DIR WORK MIN_SECRET_LENGTH
 
         value="${!name-}"
 
-        if [ -z "${value}" ] || [ "${#value}" -lt "${MIN_SECRET_LENGTH}" ]; then
+        # The needle reaches grep through a file, never argv: on a self-hosted
+        # runner argv is readable from /proc by co-tenant processes, so the value
+        # only crosses a pipe between builtins. grep -f reads one pattern per
+        # line: only lines of MIN_SECRET_LENGTH or more go in, since a blank line
+        # is an empty pattern that matches every file. The newline after the
+        # last line ends that pattern, it does not add an empty one.
+        printf '%s\n' "${value}" | while IFS= read -r line; do
+            if [ "${#line}" -ge "${MIN_SECRET_LENGTH}" ]; then
+                printf '%s\n' "${line}"
+            fi
+        done >"${WORK}/needle"
+
+        # Empty value, or no line long enough: nothing to look for.
+        if [ ! -s "${WORK}/needle" ]; then
             continue
         fi
-
-        # The needle reaches grep through a file, never argv: on a self-hosted
-        # runner argv is readable from /proc by co-tenant processes. `printf
-        # '%s'` writes no trailing newline — an empty trailing pattern would
-        # match every file and turn every build into a false positive.
-        printf '%s' "${value}" >"${WORK}/needle"
 
         if hits="$(grep -rlF -f "${WORK}/needle" -- "${BUILD_DIR}")"; then
             printf '%s\n' "${name}" >>"${WORK}/report.txt"

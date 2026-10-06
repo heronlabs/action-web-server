@@ -120,6 +120,60 @@ run_check() {
   rm -f "$RUN_AWSLOG"
 }
 
+# Multi-line values (armored PGP keys, PEM keys, certificates) are matched line
+# by line: grep -f reads one pattern per line, so a blank line would match every
+# file and a short line (the armor CRC) could match by chance.
+@test "multi-line value: a blank line in the value does not match every file" {
+  seed_param /my-app/APT_GPG_PRIVATE_KEY
+  RUN_ENV_LINES=($'APT_GPG_PRIVATE_KEY=\'-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nlQOYBGZk0123456789abcdefABCDEFghijklmnopqrstuvwxyz0123456789+/AB\n=Ab12\n-----END PGP PRIVATE KEY BLOCK-----\'')
+  RUN_DIST_FILES=("assets/index-a1b2c3.js=const t='nothing to see';")
+
+  run_check AWS_ENV_PATH=/my-app
+
+  [ "$RUN_RC" -eq 0 ]
+  echo "$RUN_OUT" | grep -q 'LEAK_CHECK passed'
+
+  rm -f "$RUN_AWSLOG"
+}
+
+@test "multi-line value: a line under 16 characters in the bundle is ignored" {
+  seed_param /my-app/APT_GPG_PRIVATE_KEY
+  RUN_ENV_LINES=($'APT_GPG_PRIVATE_KEY=\'-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nlQOYBGZk0123456789abcdefABCDEFghijklmnopqrstuvwxyz0123456789+/AB\n=Ab12\n-----END PGP PRIVATE KEY BLOCK-----\'')
+  RUN_DIST_FILES=("assets/index-a1b2c3.js=const c='=Ab12';")
+
+  run_check AWS_ENV_PATH=/my-app
+
+  [ "$RUN_RC" -eq 0 ]
+
+  rm -f "$RUN_AWSLOG"
+}
+
+@test "multi-line value: one long line in the bundle fails the build" {
+  seed_param /my-app/APT_GPG_PRIVATE_KEY
+  RUN_ENV_LINES=($'APT_GPG_PRIVATE_KEY=\'-----BEGIN PGP PRIVATE KEY BLOCK-----\n\nlQOYBGZk0123456789abcdefABCDEFghijklmnopqrstuvwxyz0123456789+/AB\n=Ab12\n-----END PGP PRIVATE KEY BLOCK-----\'')
+  RUN_DIST_FILES=("assets/index-a1b2c3.js=const k='lQOYBGZk0123456789abcdefABCDEFghijklmnopqrstuvwxyz0123456789+/AB';")
+
+  run_check AWS_ENV_PATH=/my-app
+
+  [ "$RUN_RC" -eq 1 ]
+  echo "$RUN_OUT" | grep -q 'APT_GPG_PRIVATE_KEY'
+  echo "$RUN_OUT" | grep -q 'assets/index-a1b2c3.js'
+
+  rm -f "$RUN_AWSLOG"
+}
+
+@test "multi-line value: every line under 16 characters is skipped" {
+  seed_param /my-app/VITE_TRACKING_IDS
+  RUN_ENV_LINES=($'VITE_TRACKING_IDS=\'GTM-ABC1234\nCLARITY-ab12cd\'')
+  RUN_DIST_FILES=("assets/index-a1b2c3.js=const g='GTM-ABC1234',c='CLARITY-ab12cd';")
+
+  run_check AWS_ENV_PATH=/my-app
+
+  [ "$RUN_RC" -eq 0 ]
+
+  rm -f "$RUN_AWSLOG"
+}
+
 @test "scope: only SecureString parameters are requested from SSM" {
   seed_param /my-app/SENTRY_AUTH_TOKEN
   RUN_ENV_LINES=("SENTRY_AUTH_TOKEN='sntrys_0123456789abcdef'")
